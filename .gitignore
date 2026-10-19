@@ -1,0 +1,24 @@
+# 虚拟机镜像目录（体积过大，不入库）
+xnj/
+
+# 原始数据集（公开数据集，按 DOI 自行下载）
+data/
+
+# Hive 导出的 ADS 结果（供在线层导入，属数据产物）
+ads_export/
+
+# 训练好的模型文件（296MB，超过 GitHub 单文件 100MB 限制）
+*.pkl
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+
+# 本地虚拟环境与配置
+.venv/
+venv/
+.env
+
+# 系统文件
+.DS_Store
+Thumbs.db

@@ -1,0 +1,91 @@
+version: "3"
+
+# 跨境电商订单预警系统 —— 离线大数据环境
+# 组件：Hadoop(HDFS) + Hive(元数据 PostgreSQL)
+# 说明：不启用 YARN（用 local 模式跑 MapReduce），8G 虚拟机内存更从容
+
+services:
+
+  # ---------- HDFS 主节点 ----------
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
+    container_name: namenode
+    restart: unless-stopped
+    ports:
+      - "9870:9870"          # HDFS Web UI
+      - "9000:9000"          # HDFS RPC 端口
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=bishe
+    env_file:
+      - ./hadoop.env
+    networks:
+      - bishe
+
+  # ---------- HDFS 数据节点 ----------
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop2.7.4-java8
+    container_name: datanode
+    restart: unless-stopped
+    volumes:
+      - datanode_data:/hadoop/dfs/data
+    environment:
+      # 注意：必须用 9000(RPC) 而不是 9870(WebUI)，
+      # bde2020 镜像的 WebUI 端口不对外监听，用 9870 会一直等待超时
+      - SERVICE_PRECONDITION=namenode:9000
+    env_file:
+      - ./hadoop.env
+    networks:
+      - bishe
+
+  # ---------- Hive 元数据库（PostgreSQL） ----------
+  metastore-db:
+    image: bde2020/hive-metastore-postgresql:2.3.0
+    container_name: metastore-db
+    restart: unless-stopped
+    networks:
+      - bishe
+
+  # ---------- Hive 元数据服务 ----------
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hive-metastore
+    restart: unless-stopped
+    depends_on:
+      - namenode
+      - datanode
+      - metastore-db
+    environment:
+      # 同样用 9000 而非 9870；datanode:9864 的 HTTP 端口也不对外监听，故一并去掉
+      - SERVICE_PRECONDITION=namenode:9000 metastore-db:5432
+    command: /opt/hive/bin/hive --service metastore
+    env_file:
+      - ./hadoop.env
+    networks:
+      - bishe
+
+  # ---------- HiveServer2（跑 SQL 的服务） ----------
+  hive-server:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hive-server
+    restart: unless-stopped
+    depends_on:
+      - hive-metastore
+    ports:
+      - "10000:10000"        # HiveServer2 JDBC
+      - "10002:10002"        # HiveServer2 Web UI
+    environment:
+      - SERVICE_PRECONDITION=hive-metastore:9083
+    env_file:
+      - ./hadoop.env
+    networks:
+      - bishe
+
+volumes:
+  namenode_data:
+  datanode_data:
+
+networks:
+  bishe:
+    driver: bridge

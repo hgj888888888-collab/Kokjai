@@ -1,0 +1,182 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>跨境电商订单预警系统</title>
+<link rel="stylesheet" href="{% static 'css/app.css' %}?v=3">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">CB</div>
+    <div class="brand-text">
+      <h1>跨境电商订单预警系统</h1>
+      <p>离线数仓产出预警结果，在线服务提供查询、处置与实时预测</p>
+    </div>
+  </div>
+  <div class="topbar-meta" id="model-meta">
+    <span class="tag">模型加载中</span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab" data-view="overview">总览</button>
+  <button class="tab" data-view="risk">履约风险</button>
+  <button class="tab" data-view="traffic">流量与转化</button>
+  <button class="tab" data-view="orders">订单查询与预测</button>
+  <button class="tab" data-view="tickets">工单处置</button>
+</nav>
+
+<main class="page">
+
+  <section class="view" id="view-overview">
+    <section class="kpi-row" id="kpi-row"></section>
+    <section class="grid grid-3">
+      <article class="card">
+        <h2 class="card-title">风险等级分布</h2>
+        <p class="card-sub">按 W1 延迟概率划分的订单风险等级</p>
+        <div class="chart chart-pie" id="chart-risk-pie"></div>
+      </article>
+
+      <article class="card card-wide">
+        <h2 class="card-title">月度订单量与平均延迟概率</h2>
+        <p class="card-sub">下单时间字段为模拟生成，趋势仅用于展示</p>
+        <div class="chart" id="chart-monthly"></div>
+      </article>
+
+      <article class="card card-full">
+        <h2 class="card-title">目的国订单分布</h2>
+        <p class="card-sub" id="map-note">底图为英文国名，订单表国名为西班牙语，已按国名映射维表对齐后着色</p>
+        <div class="chart chart-map" id="chart-map"></div>
+      </article>
+    </section>
+  </section>
+
+  <section class="view" id="view-risk">
+    <section class="grid">
+      <article class="card">
+        <h2 class="card-title">物流方式订单占比</h2>
+        <p class="card-sub">四种物流方式的订单量结构</p>
+        <div class="chart chart-pie" id="chart-ship-pie"></div>
+      </article>
+
+      <article class="card">
+        <h2 class="card-title">物流方式延迟率</h2>
+        <p class="card-sub" id="ship-note">虚线为全站基线，柱高为各方式延迟率</p>
+        <div class="chart" id="chart-ship-bar"></div>
+      </article>
+
+      <article class="card card-full">
+        <h2 class="card-title">商品类目延迟率前十五</h2>
+        <p class="card-sub" id="cat-note">按订单量取前十五个类目，类目效应经检验不显著，仅作描述性监控</p>
+        <div class="chart chart-tall" id="chart-cat-bar"></div>
+      </article>
+    </section>
+  </section>
+
+  <section class="view" id="view-traffic">
+    <section class="grid">
+      <article class="card card-full">
+        <h2 class="card-title">日访问量趋势与三倍标准差基线</h2>
+        <p class="card-sub">超出上下限即判定为流量异常</p>
+        <div class="chart chart-wide" id="chart-traffic"></div>
+      </article>
+
+      <article class="card card-full">
+        <h2 class="card-title">转化异常商品</h2>
+        <p class="card-sub">高浏览低转化，取转化率最低四分位</p>
+        <div class="scroll-box" id="conversion-list"></div>
+      </article>
+    </section>
+  </section>
+
+  <section class="view" id="view-orders">
+    <section class="card card-full">
+      <h2 class="card-title">订单级预警查询</h2>
+      <p class="card-sub">来自 ADS 综合风险评分表，含延迟概率、风险分与处置建议</p>
+      <div class="filters">
+        <select id="order-risk">
+          <option value="">全部风险等级</option>
+          <option value="高">高</option>
+          <option value="中">中</option>
+          <option value="低">低</option>
+        </select>
+        <select id="order-shipping"><option value="">全部物流方式</option></select>
+        <input id="order-keyword" type="text" placeholder="订单号、目的国或类目">
+        <button class="btn" id="order-search">查询</button>
+      </div>
+      <div class="list" id="order-list"></div>
+      <div class="pager" id="order-pager"></div>
+    </section>
+
+    <section class="card card-full">
+      <h2 class="card-title">实时延迟预测</h2>
+      <p class="card-sub">在线加载离线层训练好的模型文件，对单笔订单即时打分</p>
+      <form class="predict-form" id="predict-form">
+        <label>下单时间<input type="text" name="order_datetime" value="2017-12-05 14:30:00" required></label>
+        <label>物流方式
+          <select name="shipping_mode">
+            <option>Standard Class</option>
+            <option>Second Class</option>
+            <option>First Class</option>
+            <option>Same Day</option>
+          </select>
+        </label>
+        <label>支付方式
+          <select name="payment_type">
+            <option>DEBIT</option>
+            <option>TRANSFER</option>
+            <option>PAYMENT</option>
+            <option>CASH</option>
+          </select>
+        </label>
+        <label>市场大区<input type="text" name="market" value="Europe"></label>
+        <label>主类目<input type="text" name="main_category_name" value="Fishing"></label>
+        <label>订单件数<input type="number" name="total_quantity" value="2" min="1"></label>
+        <label>订单净额<input type="number" name="total_net_amount" value="360" step="0.01"></label>
+        <label>订单折扣<input type="number" name="total_discount" value="12" step="0.01"></label>
+        <label>每单利润<input type="number" name="benefit_per_order" value="40" step="0.01"></label>
+        <div class="predict-actions">
+          <button class="btn btn-primary" type="submit">预测延迟概率</button>
+        </div>
+      </form>
+      <div class="predict-result" id="predict-result"></div>
+    </section>
+  </section>
+
+  <section class="view" id="view-tickets">
+    <section class="card card-full">
+      <h2 class="card-title">风险工单与处置闭环</h2>
+      <p class="card-sub">处置状态回写业务库，并同步刷新处置统计表</p>
+      <div class="filters">
+        <select id="ticket-type"><option value="">全部预警类型</option></select>
+        <select id="ticket-status">
+          <option value="">全部处置状态</option>
+          <option value="待处理">待处理</option>
+          <option value="处理中">处理中</option>
+          <option value="已处置">已处置</option>
+          <option value="已关闭">已关闭</option>
+        </select>
+        <input id="ticket-keyword" type="text" placeholder="工单号或预警对象">
+        <button class="btn" id="ticket-search">查询</button>
+      </div>
+      <div class="list" id="ticket-list"></div>
+      <div class="pager" id="ticket-pager"></div>
+    </section>
+
+    <section class="card card-full">
+      <h2 class="card-title">处置结果统计</h2>
+      <p class="card-sub">命中率为被预警且确实延迟的比例</p>
+      <div class="scroll-box" id="handle-stats"></div>
+    </section>
+  </section>
+
+</main>
+
+<script src="{% static 'vendor/echarts.min.js' %}"></script>
+<script src="{% static 'js/app.js' %}?v=3"></script>
+</body>
+</html>

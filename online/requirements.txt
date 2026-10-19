@@ -1,0 +1,7 @@
+Django>=5.1,<6.0
+djangorestframework>=3.15
+PyMySQL>=1.1
+# 与训练脚本所用版本严格一致，保证 w1_model.pkl 可无损加载
+scikit-learn==1.9.1
+pandas==3.0.3
+numpy==2.5.1
